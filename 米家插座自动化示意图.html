@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>米家插座 × Quicker 自动化</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #eef2f9; }
+  body {
+    font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex; justify-content: center;
+    padding: 0;
+  }
+  .canvas {
+    position: relative;
+    width: 1180px;
+    padding: 62px 64px 54px;
+    background:
+      radial-gradient(900px 420px at 88% -8%, rgba(120,170,255,.20), transparent 62%),
+      radial-gradient(700px 380px at -6% 108%, rgba(255,176,140,.20), transparent 60%),
+      linear-gradient(180deg, #fbfcfe 0%, #f2f5fb 100%);
+    overflow: hidden;
+  }
+  .canvas::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(120,145,180,.13) 1px, transparent 1px);
+    background-size: 22px 22px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 42%);
+            mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 42%);
+    pointer-events: none;
+  }
+  header { position: relative; margin-bottom: 38px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 13px 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.85);
+    border: 1px solid rgba(120,145,180,.22);
+    font-size: 12.5px; font-weight: 600; letter-spacing: .4px;
+    color: #5a6b85;
+    box-shadow: 0 2px 10px rgba(30,50,90,.05);
+  }
+  .badge b { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: linear-gradient(135deg,#5b9dff,#2f6bff); }
+  h1 {
+    margin-top: 18px;
+    font-size: 44px; line-height: 1.18; letter-spacing: -1px;
+    font-weight: 700; color: #17233a;
+  }
+  h1 span.off { color: #e0673c; }
+  h1 span.on { color: #1a9463; }
+  .sub {
+    margin-top: 12px;
+    font-size: 16.5px; line-height: 1.7; color: #6d7c93; max-width: 760px;
+  }
+
+  .lanes { position: relative; display: flex; flex-direction: column; gap: 18px; }
+
+  .lane {
+    position: relative;
+    background: rgba(255,255,255,.92);
+    border: 1px solid rgba(120,145,180,.16);
+    border-radius: 20px;
+    padding: 20px 26px 22px;
+    box-shadow: 0 12px 34px rgba(24,45,85,.07), 0 1px 2px rgba(24,45,85,.04);
+    backdrop-filter: blur(6px);
+  }
+  .lane::before {
+    content: ""; position: absolute; left: 0; top: 18px; bottom: 18px; width: 4px;
+    border-radius: 0 4px 4px 0; background: var(--c);
+  }
+  .lane-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .lane-head .k {
+    font-size: 15px; font-weight: 700; color: #26344c; letter-spacing: .2px;
+  }
+  .tag {
+    font-size: 11px; font-weight: 700; letter-spacing: .6px;
+    padding: 3px 8px; border-radius: 6px;
+    color: var(--c); background: var(--bg);
+  }
+  .lane-head .hint { margin-left: auto; font-size: 12.5px; color: #98a6ba; }
+
+  .flow { display: flex; align-items: center; }
+
+  .node {
+    flex: 0 0 auto;
+    width: 176px;
+    padding: 14px 10px 13px;
+    border-radius: 15px;
+    background: #f7f9fd;
+    border: 1px solid #e6ecf6;
+    text-align: center;
+  }
+  .node .ic {
+    width: 42px; height: 42px; margin: 0 auto 9px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #e4ebf6;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(30,55,100,.05);
+  }
+  .node .ic svg { width: 21px; height: 21px; display: block; }
+  .node .t { font-size: 15px; font-weight: 700; color: #22304a; letter-spacing: .1px; }
+  .node .d { margin-top: 4px; font-size: 12px; color: #8695ab; }
+
+  .node.q { background: linear-gradient(180deg,#f4f8ff,#eef4ff); border-color: #d9e6ff; }
+  .node.q .ic { border-color: #d5e3ff; background: #fff; }
+  .node.off { background: linear-gradient(180deg,#fff6f2,#ffefea); border-color: #ffdccc; }
+  .node.off .t { color: #b4471f; }
+  .node.off .d { color: #c07d63; }
+  .node.on { background: linear-gradient(180deg,#f2fdf7,#e9fbf1); border-color: #c9f0da; }
+  .node.on .t { color: #14794a; }
+  .node.on .d { color: #5f9d7e; }
+
+  .arrow {
+    position: relative; flex: 1 1 auto; height: 2px; margin: 0 16px;
+    background: linear-gradient(90deg, #e0e8f4, #c9d6e9);
+    border-radius: 2px;
+  }
+  .arrow::after {
+    content: ""; position: absolute; right: -1px; top: -4px;
+    width: 8px; height: 8px;
+    border-top: 2px solid #c9d6e9; border-right: 2px solid #c9d6e9;
+    transform: rotate(45deg); border-radius: 1px;
+  }
+  .arrow em {
+    position: absolute; left: 50%; top: 9px; transform: translateX(-50%);
+    font-style: normal; font-size: 11px; letter-spacing: .3px;
+    color: #9fadc1; white-space: nowrap;
+  }
+
+  .foot {
+    position: relative;
+    margin-top: 34px;
+    display: flex; align-items: stretch; gap: 14px;
+  }
+  .fact {
+    flex: 1;
+    display: flex; align-items: center; gap: 11px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.72);
+    border: 1px solid rgba(120,145,180,.16);
+  }
+  .fact .fi {
+    width: 30px; height: 30px; flex: 0 0 auto; border-radius: 9px;
+    background: #fff; border: 1px solid #e6ecf6;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fact .fi svg { width: 15px; height: 15px; }
+  .fact .ft { font-size: 13px; font-weight: 700; color: #2b3a54; }
+  .fact .fd { font-size: 11.5px; color: #90a0b6; margin-top: 2px; }
+
+  .sign {
+    position: relative;
+    margin-top: 30px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px; color: #8b9ab0; letter-spacing: .3px;
+  }
+  .sign .line { height: 1px; width: 46px; flex: 0 0 auto;
+    background: linear-gradient(90deg, rgba(150,170,200,.45), rgba(150,170,200,.05)); }
+  .sign .heart { color: #ff7b8a; font-size: 14px; line-height: 1; }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <header>
+    <div class="badge"><b></b>米家 × Quicker</div>
+    <h1>人走<span class="off">断电</span>，人回<span class="on">通电</span></h1>
+    <p class="sub">电脑锁屏的那一刻，桌上的插座自动断电；解锁的瞬间，它又悄悄恢复供电。<br>没有云端定时，没有额外硬件，只靠电脑上的两个事件。</p>
+  </header>
+
+  <div class="lanes">
+
+    <!-- 离开 -->
+    <div class="lane" style="--c:#e8724a; --bg:#fff1eb;">
+      <div class="lane-head">
+        <span class="k">我离开</span>
+        <span class="tag">全自动</span>
+        <span class="hint">约 3 秒完成</span>
+      </div>
+      <div class="flow">
+        <div class="node">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#5a6b85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="10.5" width="16" height="10" rx="2.5"/>
+              <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
+              <circle cx="12" cy="15.5" r="1.4" fill="#5a6b85" stroke="none"/>
+            </svg>
+          </div>
+          <div class="t">Win + L</div>
+          <div class="d">锁屏离开</div>
+        </div>
+
+        <div class="arrow"><em>系统事件</em></div>
+
+        <div class="node q">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="11" r="7" stroke="#2f6bff" stroke-width="1.8"/>
+              <path d="M15.6 15.2 19 19" stroke="#2f6bff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="11" r="2" fill="#2f6bff"/>
+            </svg>
+          </div>
+          <div class="t">Quicker</div>
+          <div class="d">捕获「计算机锁定」</div>
+        </div>
+
+        <div class="arrow"><em>调用脚本</em></div>
+
+        <div class="node off">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#d4612f" stroke-width="1.9" stroke-linecap="round">
+              <path d="M12 4.5v7"/>
+              <path d="M6.6 7.2a7.5 7.5 0 1 0 10.8 0"/>
+            </svg>
+          </div>
+          <div class="t">插座断电</div>
+          <div class="d">米家智能插座 3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 回来 -->
+    <div class="lane" style="--c:#1f9d63; --bg:#e9faf1;">
+      <div class="lane-head">
+        <span class="k">我回来</span>
+        <span class="tag">全自动</span>
+        <span class="hint">解锁即恢复</span>
+      </div>
+      <div class="flow">
+        <div class="node">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#5a6b85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="10.5" width="16" height="10" rx="2.5"/>
+              <path d="M8 10.5V7a4 4 0 0 1 8 0v1.2"/>
+              <circle cx="12" cy="15.5" r="1.4" fill="#5a6b85" stroke="none"/>
+            </svg>
+          </div>
+          <div class="t">解锁</div>
+          <div class="d">PIN / 指纹 / 密码</div>
+        </div>
+
+        <div class="arrow"><em>系统事件</em></div>
+
+        <div class="node q">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="11" r="7" stroke="#2f6bff" stroke-width="1.8"/>
+              <path d="M15.6 15.2 19 19" stroke="#2f6bff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="11" r="2" fill="#2f6bff"/>
+            </svg>
+          </div>
+          <div class="t">Quicker</div>
+          <div class="d">捕获「计算机解锁」</div>
+        </div>
+
+        <div class="arrow"><em>调用脚本</em></div>
+
+        <div class="node on">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#159b60" stroke-width="1.9" stroke-linecap="round">
+              <path d="M12 4.5v7"/>
+              <path d="M6.6 7.2a7.5 7.5 0 1 0 10.8 0"/>
+            </svg>
+          </div>
+          <div class="t">插座通电</div>
+          <div class="d">米家智能插座 3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 手动 -->
+    <div class="lane" style="--c:#3b7ddd; --bg:#eaf2ff;">
+      <div class="lane-head">
+        <span class="k">我随时想开</span>
+        <span class="tag">手动</span>
+        <span class="hint">只在已解锁的桌面上有效</span>
+      </div>
+      <div class="flow">
+        <div class="node">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#5a6b85" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2.5" y="6.5" width="19" height="11" rx="2.2"/>
+              <path d="M6 10.5h.01M9.2 10.5h.01M12.4 10.5h.01M15.6 10.5h.01M8 14h8"/>
+            </svg>
+          </div>
+          <div class="t">双击右 Ctrl</div>
+          <div class="d">连按两下</div>
+        </div>
+
+        <div class="arrow"><em>按键触发</em></div>
+
+        <div class="node q">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="11" r="7" stroke="#2f6bff" stroke-width="1.8"/>
+              <path d="M15.6 15.2 19 19" stroke="#2f6bff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="11" r="2" fill="#2f6bff"/>
+            </svg>
+          </div>
+          <div class="t">Quicker</div>
+          <div class="d">捕获「按键双击」</div>
+        </div>
+
+        <div class="arrow"><em>调用脚本</em></div>
+
+        <div class="node on">
+          <div class="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#159b60" stroke-width="1.9" stroke-linecap="round">
+              <path d="M12 4.5v7"/>
+              <path d="M6.6 7.2a7.5 7.5 0 1 0 10.8 0"/>
+            </svg>
+          </div>
+          <div class="t">插座通电</div>
+          <div class="d">米家智能插座 3</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <div class="fact">
+      <div class="fi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5a6b85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4.5" width="18" height="12" rx="2"/>
+          <path d="M8 20h8M12 16.5V20"/>
+        </svg>
+      </div>
+      <div><div class="ft">全程本机运行</div><div class="fd">不依赖云端定时</div></div>
+    </div>
+    <div class="fact">
+      <div class="fi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5a6b85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="8.5"/>
+          <path d="M12 7.5V12l3 1.8"/>
+        </svg>
+      </div>
+      <div><div class="ft">响应约 3 秒</div><div class="fd">写入后自动校验状态</div></div>
+    </div>
+    <div class="fact">
+      <div class="fi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5a6b85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3.5 5 6.4v5.2c0 4.2 2.9 7.6 7 8.9 4.1-1.3 7-4.7 7-8.9V6.4z"/>
+          <path d="m9.2 11.9 2 2 3.6-3.9"/>
+        </svg>
+      </div>
+      <div><div class="ft">失败自动重试</div><div class="fd">最多 3 次，全程留日志</div></div>
+    </div>
+  </div>
+
+  <div class="sign">
+    <span>一点小小的自动化</span>
+    <span class="line"></span>
+    <span class="heart">♥</span>
+  </div>
+
+</div>
+</body>
+</html>

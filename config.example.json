@@ -1,0 +1,5 @@
+{
+  "did": "YOUR_DEVICE_DID",
+  "prop": "on-2",
+  "retries": 3
+}

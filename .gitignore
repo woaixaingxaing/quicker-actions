@@ -1,0 +1,17 @@
+# 本机配置与运行日志，不要提交
+config.json
+plug.log
+
+# 凭据（mijiaAPI 默认存放在用户目录，这里再兜底一次）
+auth.json
+.config/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 系统杂项
+Thumbs.db
+.DS_Store

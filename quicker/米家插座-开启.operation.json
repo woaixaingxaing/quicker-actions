@@ -1,0 +1,11 @@
+{
+  "payloadType": "Basic.RunOrOpen",
+  "fileName": "C:\\Users\\<用户名>\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+  "arguments": "\"C:\\path\\to\\quicker-actions\\plug.py\" on",
+  "runAsAdmin": false,
+  "waitForExit": false,
+  "windowStyle": "1",
+  "setWorkingDir": true,
+  "workingDir": "C:\\path\\to\\quicker-actions",
+  "activateWindowIfRunning": false
+}
