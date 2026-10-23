@@ -174,6 +174,14 @@ python plug.py on       # 通电
 - 电脑关机 / 睡眠时，这套自动化不会运行；它不是 7×24 的常驻服务。
 - MiHome-Windows 和 mijiaAPI 都是社区项目，米家接口变更后可能失效。失效时 `plug.log` 会连续出现 `FAILED`。
 
+## 版本与更新
+
+当前版本：**v1.0**（首个公开版本）。
+
+- 每个版本的改动记录在 [CHANGELOG.md](CHANGELOG.md)。
+- 所有历史版本在 [Tags](https://github.com/woaixaingxaing/quicker-actions/tags) 里，可下载对应版本的完整源码。
+- 以后修改按语义化版本递增：修 Bug 用 `v1.0.1`，新增功能用 `v1.1`，有不兼容变更才用 `v2.0`；提交后打标签并推送即可，Git 会保留旧版本。
+
 ## 参考
 
 - [mijiaAPI](https://github.com/Do1e/mijia-api)
