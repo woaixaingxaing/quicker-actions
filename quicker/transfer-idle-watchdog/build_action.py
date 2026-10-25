@@ -5,6 +5,7 @@ import pathlib
 
 HERE = pathlib.Path(__file__).resolve().parent
 WATCHDOG = HERE / "watchdog.ps1"
+NOTIFY = HERE / "notify.ps1"
 SETTINGS = HERE / "settings.tsx"
 OUTPUT = HERE / "main.cs"
 
@@ -25,7 +26,11 @@ def chunks(value: str, width: int = 4000) -> str:
 watchdog_bytes = WATCHDOG.read_bytes()
 if not watchdog_bytes.startswith(b"\xef\xbb\xbf"):
     watchdog_bytes = b"\xef\xbb\xbf" + watchdog_bytes
+notify_bytes = NOTIFY.read_bytes()
+if not notify_bytes.startswith(b"\xef\xbb\xbf"):
+    notify_bytes = b"\xef\xbb\xbf" + notify_bytes
 watchdog_b64 = base64.b64encode(watchdog_bytes).decode("ascii")
+notify_b64 = base64.b64encode(notify_bytes).decode("ascii")
 settings_b64 = base64.b64encode(SETTINGS.read_bytes()).decode("ascii")
 
 TEMPLATE = r'''void Main()
@@ -37,7 +42,6 @@ TEMPLATE = r'''void Main()
         EnsureMonitor(dir, false);
         return;
     }
-    EnsureMonitor(dir, false);
     OpenSettings(dir);
     EnsureMonitor(dir, true);
 }
@@ -46,7 +50,6 @@ TEMPLATE = r'''void Main()
 void OpenSettingsMenu()
 {
     var dir = PrepareData();
-    EnsureMonitor(dir, false);
     OpenSettings(dir);
     EnsureMonitor(dir, true);
 }
@@ -106,12 +109,13 @@ void EnsureConfig(string dir)
 bool EnsureWatchdog(string dir)
 {
     var path = Path.Combine(dir, "watchdog.ps1");
+    var notifyPath = Path.Combine(dir, "notify.ps1");
     var marker = Path.Combine(dir, "watchdog.version");
     var version = WatchdogVersion();
     var need = true;
     try
     {
-        if (qk.Files.Exists(path) && qk.Files.Exists(marker))
+        if (qk.Files.Exists(path) && qk.Files.Exists(marker) && qk.Files.Exists(notifyPath))
             need = qk.Files.ReadText(marker).Trim() != version;
     }
     catch
@@ -120,6 +124,7 @@ bool EnsureWatchdog(string dir)
     }
     if (!need) return false;
     qk.Files.WriteBytes(path, Convert.FromBase64String(WatchdogBase64()), overwrite: true);
+    qk.Files.WriteBytes(notifyPath, Convert.FromBase64String(NotifyBase64()), overwrite: true);
     qk.Files.WriteText(marker, version, overwrite: true);
     qk.Log("已更新后台监控脚本 " + version);
     return true;
@@ -127,7 +132,7 @@ bool EnsureWatchdog(string dir)
 
 string WatchdogVersion()
 {
-    return "1.0.1";
+    return "1.0.3";
 }
 
 void EnsureMonitor(string dir, bool notify)
@@ -827,10 +832,16 @@ string WatchdogBase64()
 {
     return __WATCHDOG_B64__;
 }
+
+string NotifyBase64()
+{
+    return __NOTIFY_B64__;
+}
 '''
 
 body = TEMPLATE.replace("__SETTINGS_B64__", chunks(settings_b64))
 body = body.replace("__WATCHDOG_B64__", chunks(watchdog_b64))
+body = body.replace("__NOTIFY_B64__", chunks(notify_b64))
 OUTPUT.write_text(body, encoding="utf-8", newline="\n")
 print("wrote", OUTPUT, len(body), "chars")
-print("watchdog b64", len(watchdog_b64), "settings b64", len(settings_b64))
+print("watchdog b64", len(watchdog_b64), "notify b64", len(notify_b64), "settings b64", len(settings_b64))

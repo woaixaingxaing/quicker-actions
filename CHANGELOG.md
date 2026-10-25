@@ -1,5 +1,12 @@
 # 更新记录
 
+## 2026-10-25 — transfer-idle-watchdog v1.0.3 桌面提示
+
+- `quicker/transfer-idle-watchdog/`：空闲清理真正结束（或有残留）进程后，屏幕右下角弹出桌面提示卡片；卡片为 WPF 渲染（抗锯齿圆角 + 阴影），8 秒自动消失，点卡片或 Esc 可提前关闭。
+- 提示由独立小进程（新增 `notify.ps1`）显示，不再阻塞监控采样循环；原 `Show-Balloon` 气泡方案废弃。
+- 手动触发时先打开设置窗口、关闭后再确保监控，避免监控启动等待拖慢弹窗。
+- `build_action.py` 现在同时嵌入 `watchdog.ps1`、`notify.ps1`、`settings.tsx`；动作按 `watchdog.version` 标记自动更新数据目录脚本并重启监控。
+
 ## 2026-10-25 — 新增独立动作
 
 - 新增 `quicker/transfer-idle-watchdog/`：通用「传输空闲自动清后台」Quicker 动作。监控任意软件的上传/下载，连续空闲达到设定时间后结束后台进程；默认百度网盘 5 分钟。

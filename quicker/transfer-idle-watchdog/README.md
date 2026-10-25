@@ -12,6 +12,7 @@
 - 后台监控由独立的隐藏 PowerShell 进程执行，动作窗口关掉不影响计时。
 - 配置改完立即生效，监控每次采样都会重新读取 `apps.json`，不需要重启。
 - 结束后台进程树，并再次检查残留；Windows 目录下的进程、Quicker 自身和常见系统进程受保护。
+- 清理真正结束（或有残留）进程后，屏幕右下角弹出桌面提示卡片，8 秒自动消失，点卡片或按 Esc 可提前关闭；提示由独立小进程显示，不阻塞监控采样。
 - 提供「运行状态」「查看日志」「重启/停止监控」右键菜单，排错不靠猜。
 - 支持 Quicker 启动时自动恢复监控；监控异常退出后，下次动作触发会补启动。
 
@@ -37,7 +38,7 @@ flowchart LR
     E -- 否 --> G{"连续空闲 ≥ 设定时间？"}
     G -- 否 --> C
     G -- 是 --> H["结束进程树并复查残留"]
-    H --> I["写日志 / 可选气泡通知"]
+    H --> I["写日志 / 弹出桌面提示卡片"]
 ```
 
 传输量取的是进程 I/O 读写计数（`ReadTransferCount` / `WriteTransferCount`）的增量，不是网卡层的纯网络流量。因此：
@@ -58,13 +59,13 @@ flowchart LR
 4. 运行一次动作，设置窗口会打开；添加软件、设置规则后「保存并关闭」。
 5. 需要开机后自动恢复监控时，给动作加一个「Quicker 启动」自动运行触发器，或加一个 15 分钟定时触发器兜底。
 
-如果要改源码：编辑 `settings.tsx` 或 `watchdog.ps1` 后运行
+如果要改源码：编辑 `settings.tsx`、`watchdog.ps1` 或 `notify.ps1` 后运行
 
 ```powershell
 python build_action.py
 ```
 
-会重新生成 `main.cs`（`watchdog.ps1` 写入时自动补 UTF-8 BOM），再把新的 `main.cs` 贴回动作。
+会重新生成 `main.cs`（两个 `.ps1` 写入时自动补 UTF-8 BOM），动作下次运行会按 `watchdog.version` 标记自动更新数据目录里的脚本并重启监控，再把新的 `main.cs` 贴回动作即可。
 
 ## 触发器
 
@@ -72,7 +73,7 @@ python build_action.py
 
 | 触发方式 | 行为 |
 | --- | --- |
-| 手动运行 / 快捷键 | 确保监控在跑，打开设置窗口 |
+| 手动运行 / 快捷键 | 先打开设置窗口，关闭后再确保监控在跑（不让启动等待拖慢弹窗） |
 | 「Quicker 启动」自动运行 | 只确保监控在跑，不弹窗 |
 | 进程启动、定时器等事件触发 | 只确保监控在跑，不弹窗 |
 
@@ -92,7 +93,7 @@ python build_action.py
 | --- | --- |
 | `version` | 配置版本，当前为 `1` |
 | `sampleSeconds` | 采样间隔，5–120 秒，默认 `10`；只能改 JSON，界面未暴露 |
-| `notifications` | 清理后是否弹气泡通知 |
+| `notifications` | 清理后是否弹出桌面提示卡片（仅在确实结束或残留了进程时提示） |
 | `apps[].name` | 显示名称 |
 | `apps[].enabled` | 是否启用该条规则 |
 | `apps[].processes` | 要结束时结束的进程名数组（不带 `.exe`） |
@@ -107,10 +108,11 @@ python build_action.py
 
 | 文件 | 作用 |
 | --- | --- |
-| `main.cs` | 动作主体：设置界面 + 监控生命周期管理（已内嵌下方两个资源） |
+| `main.cs` | 动作主体：设置界面 + 监控生命周期管理（已内嵌下方三个资源） |
 | `settings.tsx` | 设置界面的 React/TSX 源码 |
 | `watchdog.ps1` | 独立运行的 PowerShell 监控脚本 |
-| `build_action.py` | 把 `watchdog.ps1`、`settings.tsx` 以 base64 嵌入 `main.cs` |
+| `notify.ps1` | 清理后弹出的桌面提示卡片（WinForms，独立进程显示） |
+| `build_action.py` | 把 `watchdog.ps1`、`notify.ps1`、`settings.tsx` 以 base64 嵌入 `main.cs` |
 | `info.yaml` | Quicker 动作标题、描述、图标 |
 | `operation.json` | 动作类型与脚本引擎声明 |
 | `apps.example.json` | 去敏后的配置示例（仅默认百度网盘规则） |
@@ -121,6 +123,7 @@ python build_action.py
 
 - 用复制自 `ping.exe` 的受控测试进程验证空闲计时与清理：设 6 秒空闲、5 秒采样，达到阈值后结束 1 个进程，复查剩余 0；受保护的 `conhost` 被跳过。
 - 验证配置热更新：修改 `apps.json` 后无需重启监控即按新规则运行。
+- 端到端验证桌面提示卡片（v1.0.3）：受控测试进程被清理后，屏幕右下角自动弹出 WPF 提示卡片（抗锯齿圆角 + 阴影），8 秒自动消失；提示期间监控状态持续按 10 秒采样更新，确认不阻塞监控循环。
 
 真实网盘的空闲清理建议先观察一次 `watchdog.log`：不同版本的百度网盘可能更换进程名或传输模块，必要时在设置里调整 `processes` 与 `transferProcesses`。客户端版本变化后，默认规则不保证永远命中。
 

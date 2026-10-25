@@ -1,4 +1,4 @@
-# transfer-idle-watchdog v1.0.1
+# transfer-idle-watchdog v1.0.3
 param(
     [Parameter(Mandatory = $true)][string]$DataDir,
     [Parameter(Mandatory = $true)][string]$Token,
@@ -57,19 +57,17 @@ function Write-Status($apps, [int]$sampleSeconds) {
     }
 }
 
-function Show-Balloon([string]$title, [string]$text) {
+function Show-Notice([string]$title, [string]$text) {
     try {
-        Add-Type -AssemblyName System.Windows.Forms
-        Add-Type -AssemblyName System.Drawing
-        $icon = New-Object System.Windows.Forms.NotifyIcon
-        $icon.Icon = [System.Drawing.SystemIcons]::Information
-        $icon.Visible = $true
-        $icon.BalloonTipTitle = $title
-        $icon.BalloonTipText = $text
-        $icon.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info
-        $icon.ShowBalloonTip(6000)
-        Start-Sleep -Seconds 7
-        $icon.Dispose()
+        $notifyPath = Join-Path $DataDir 'notify.ps1'
+        if (-not (Test-Path -LiteralPath $notifyPath)) {
+            Write-Log '缺少 notify.ps1，跳过桌面提示'
+            return
+        }
+        $safeTitle = ($title -replace '"', '')
+        $safeText = ($text -replace '"', '')
+        $argLine = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $notifyPath + '" -Title "' + $safeTitle + '" -Text "' + $safeText + '" -Seconds 8'
+        Start-Process -FilePath 'powershell.exe' -ArgumentList $argLine -WindowStyle Hidden | Out-Null
     } catch {
         Write-Log ('通知失败: ' + $_.Exception.Message)
     }
@@ -508,12 +506,13 @@ while ($true) {
                     Write-Log ('受保护/无法读取而跳过: ' + ($result.Skipped -join ', '))
                 }
                 Write-Log ($app.name + ' 清理完成：结束 ' + $result.Killed + ' 个进程，剩余 ' + $result.Remaining)
-                if ($config.notifications -ne $false) {
+                if ($config.notifications -ne $false -and
+                    ([int]$result.Killed -gt 0 -or [int]$result.Remaining -gt 0)) {
                     $text = $app.name + ' 已连续 ' + [math]::Round($app.idleMinutes, 1) + ' 分钟无上传/下载，结束后台 ' + $result.Killed + ' 个进程。'
                     if ($result.Remaining -gt 0) {
                         $text = $text + ' 另有 ' + $result.Remaining + ' 个进程未能结束。'
                     }
-                    Show-Balloon '传输空闲清理' $text
+                    Show-Notice '传输空闲清理' $text
                 }
                 try {
                     $all = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop)
