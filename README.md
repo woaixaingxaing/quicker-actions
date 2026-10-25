@@ -2,6 +2,8 @@
 
 > 电脑锁屏，桌上的插座自动断电；解锁回来，它又自动恢复供电。  
 > 没有云端定时，没有额外硬件，只靠 Windows 的两个系统事件。
+>
+> 仓库里还有一个独立的 Quicker 动作：[传输空闲自动清后台](quicker/transfer-idle-watchdog/README.md)。它监控指定软件的上传/下载，连续空闲达到设定时间后结束后台进程；默认针对百度网盘 5 分钟。
 
 ![米家插座自动化示意图](米家插座自动化示意图.png)
 
@@ -46,7 +48,8 @@ flowchart LR
 ├─ quicker/
 │  ├─ 米家插座-开启.operation.json   # Quicker「运行或打开」动作配置
 │  ├─ 米家插座-关闭.operation.json
-│  └─ 触发器配置.md                  # 三条触发器的接法
+│  ├─ 触发器配置.md                  # 三条触发器的接法
+│  └─ transfer-idle-watchdog/        # 独立动作：传输空闲自动清后台
 ├─ 米家插座自动化示意图.html          # 示意图源文件
 └─ 米家插座自动化示意图.png           # 成品图
 ```
@@ -132,6 +135,17 @@ python plug.py on       # 通电
 
 新动作如果还在「暂存区」，触发器是找不到它的，需要先**保留到动作库**（放入「全局」场景）。详见 [quicker/触发器配置.md](quicker/触发器配置.md)。
 
+## 另一个动作：传输空闲自动清后台
+
+`quicker/transfer-idle-watchdog/` 与本页的插座联动互相独立，是另一个通用的 Quicker 动作：
+
+- 监控指定软件的上传和下载，连续 N 分钟没有传输后结束后台进程；默认对百度网盘使用 5 分钟。
+- 支持多个软件，每个软件可单独设置进程名单、传输筛选、空闲时间与流量阈值。
+- 设置界面是一张统一列表：搜索、运行中软件快捷添加、开关、行内编辑。
+- 后台监控独立运行，Quicker 启动后可自动恢复；提供运行状态、日志、重启/停止监控菜单。
+
+安装、配置字段和触发器说明见 [动作 README](quicker/transfer-idle-watchdog/README.md)。
+
 ## 已验证
 
 2026-10-24 在 Windows 10 + 米家智能插座 3（`cuco.plug.v3`）上实测：
@@ -176,7 +190,7 @@ python plug.py on       # 通电
 
 ## 版本与更新
 
-当前版本：**v1.0**（首个公开版本）。
+当前版本：**v1.0**（米家插座动作，首个公开版本）。`transfer-idle-watchdog` 是后续加入的独立动作，不随此版本号变化，说明见其目录。
 
 - 每个版本的改动记录在 [CHANGELOG.md](CHANGELOG.md)。
 - 所有历史版本在 [Tags](https://github.com/woaixaingxaing/quicker-actions/tags) 里，可下载对应版本的完整源码。

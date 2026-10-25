@@ -1,0 +1,4 @@
+$schema: quicker.action.info.v1
+title: 软件传输空闲自动清后台
+description: 监控任意软件的上传/下载活动；连续空闲达到设定时间后结束后台进程。可添加多个软件，并分别设置进程、传输筛选、空闲时间与阈值。
+icon: "fa:Light_CloudDownload:#5B8FF9"

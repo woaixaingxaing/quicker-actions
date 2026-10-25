@@ -1,0 +1,8 @@
+{
+  "payloadType": "Script.CSharp",
+  "schemaVersion": 2,
+  "engine": "qkeval",
+  "languageProfile": "qkeval-1",
+  "apiVersion": 1,
+  "timeoutMs": 0
+}

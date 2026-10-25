@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "sampleSeconds": 10,
+  "notifications": true,
+  "apps": [
+    {
+      "name": "百度网盘",
+      "enabled": true,
+      "processes": [
+        "BaiduNetdisk",
+        "BaiduNetdiskUnite",
+        "baidunetdiskhost",
+        "BaiduNetdiskRender",
+        "ServiceAssistans"
+      ],
+      "transferProcesses": [
+        "baidunetdiskhost"
+      ],
+      "transferCommandLine": "kernel.dll",
+      "idleMinutes": 5,
+      "thresholdKB": 32
+    }
+  ]
+}
