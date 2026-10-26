@@ -132,7 +132,7 @@ bool EnsureWatchdog(string dir)
 
 string WatchdogVersion()
 {
-    return "1.0.3";
+    return "1.0.4";
 }
 
 void EnsureMonitor(string dir, bool notify)

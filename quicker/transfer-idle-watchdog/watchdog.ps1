@@ -1,4 +1,4 @@
-# transfer-idle-watchdog v1.0.3
+﻿# transfer-idle-watchdog v1.0.4
 param(
     [Parameter(Mandatory = $true)][string]$DataDir,
     [Parameter(Mandatory = $true)][string]$Token,
@@ -175,8 +175,8 @@ function Get-AppProcesses($app, $nameMap) {
     return @($set.Values)
 }
 
-function Get-TransferBytes($app, $nameMap) {
-    $set = @{}
+function Get-TransferBytesByPid($app, $nameMap) {
+    $map = @{}
     foreach ($n in @($app.transferProcesses)) {
         if (-not $nameMap.ContainsKey($n)) { continue }
         foreach ($p in @($nameMap[$n])) {
@@ -184,15 +184,10 @@ function Get-TransferBytes($app, $nameMap) {
             if ($app.transferCommandLine -and $cmd.IndexOf([string]$app.transferCommandLine, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
                 continue
             }
-            $set[[int]$p.ProcessId] = $p
+            $map[[string]$p.ProcessId] = [long]$p.ReadTransferCount + [long]$p.WriteTransferCount
         }
     }
-    [long]$sum = 0
-    foreach ($p in $set.Values) {
-        $sum += [long]$p.ReadTransferCount
-        $sum += [long]$p.WriteTransferCount
-    }
-    return $sum
+    return $map
 }
 
 function Test-KillAllowed($proc, [int]$selfId, [string]$windowsPrefix) {
@@ -428,6 +423,7 @@ while ($true) {
         Write-Log ('检测到系统休眠/卡顿 ' + [int]$gap + ' 秒，重置空闲计时')
         foreach ($key in @($state.Keys)) {
             $state[$key].lastActive = $null
+            $state[$key].bytesByPid = @{}
         }
         Start-Sleep -Seconds 1
         continue
@@ -450,8 +446,7 @@ while ($true) {
         if (-not $state.ContainsKey($app.name)) {
             $state[$app.name] = [pscustomobject]@{
                 lastActive = $null
-                prevBytes  = [long]0
-                primarySig = ''
+                bytesByPid = @{}
                 wasRunning = $false
                 lastKill   = [datetime]::MinValue
                 kills      = 0
@@ -460,33 +455,37 @@ while ($true) {
         $st = $state[$app.name]
         $appProcs = @(Get-AppProcesses $app $nameMap)
         $running = ($appProcs.Count -gt 0)
+        $bytesByPid = @{}
+        if ($running) { $bytesByPid = Get-TransferBytesByPid $app $nameMap }
         $bytes = [long]0
-        if ($running) { $bytes = Get-TransferBytes $app $nameMap }
+        foreach ($v in $bytesByPid.Values) { $bytes += [long]$v }
 
         $idleSeconds = 0
         if (-not $running) {
             $st.lastActive = $null
-            $st.prevBytes = [long]0
-            $st.primarySig = ''
+            $st.bytesByPid = @{}
             $st.wasRunning = $false
         } else {
-            $primaryName = ConvertTo-ProcName ([string]@($app.processes)[0])
-            $primaryIds = @($appProcs | Where-Object { (ConvertTo-ProcName ([string]$_.Name)) -eq $primaryName } | ForEach-Object { [string]$_.ProcessId } | Sort-Object)
-            $primarySig = ($primaryIds -join ',')
             $wasRunning = [bool]$st.wasRunning
             $st.wasRunning = $true
-            if ($null -eq $st.lastActive -or -not $wasRunning -or $primarySig -ne $st.primarySig) {
+            if ($null -eq $st.lastActive -or -not $wasRunning) {
+                # 刚启动或刚从休眠恢复：只记基线，不判断活动。
                 $st.lastActive = $now
-                $st.prevBytes = $bytes
-                $st.primarySig = $primarySig
+                $st.bytesByPid = $bytesByPid
             } else {
-                $delta = $bytes - $st.prevBytes
-                if ($bytes -lt $st.prevBytes) {
-                    $st.lastActive = $now
-                } elseif ($delta -ge $app.thresholdBytes) {
+                # 按 PID 逐个比对 I/O 增量：新出现的辅助进程只记基线，
+                # 进程起落既不算活动，也不重置空闲计时。
+                $delta = [long]0
+                foreach ($key in @($bytesByPid.Keys)) {
+                    if ($st.bytesByPid.ContainsKey($key)) {
+                        $d = [long]$bytesByPid[$key] - [long]$st.bytesByPid[$key]
+                        if ($d -gt 0) { $delta += $d }
+                    }
+                }
+                if ($delta -ge $app.thresholdBytes) {
                     $st.lastActive = $now
                 }
-                $st.prevBytes = $bytes
+                $st.bytesByPid = $bytesByPid
                 $idleSeconds = [int]($now - $st.lastActive).TotalSeconds
             }
 
@@ -499,8 +498,7 @@ while ($true) {
                 }
                 $st.lastKill = $now
                 $st.lastActive = $now
-                $st.prevBytes = [long]0
-                $st.primarySig = ''
+                $st.bytesByPid = @{}
                 $st.wasRunning = $false
                 if ($result.Skipped.Count -gt 0) {
                     Write-Log ('受保护/无法读取而跳过: ' + ($result.Skipped -join ', '))
