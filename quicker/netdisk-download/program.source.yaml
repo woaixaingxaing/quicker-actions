@@ -1,0 +1,53 @@
+$schema: quicker.program.source.v1
+variables:
+  - key: clip
+    varType: text
+  - key: shareUrl
+    varType: text
+  - key: okClick
+    varType: boolean
+steps:
+  - id: s1
+    getClipboardText:
+      >>: clip
+  - id: s2
+    assign:
+      input: "$=System.Text.RegularExpressions.Regex.Match({clip}, @\"https?://pan\\.baidu\\.com/s/[A-Za-z0-9_\\-?=&%\\.]+\").Value"
+      >>: shareUrl
+  - id: s3
+    if:
+      condition: "$={shareUrl} == \"\""
+      then:
+        - id: s4
+          notify:
+            msg: 剪贴板里没有百度网盘分享链接
+            type: Warning
+      else:
+        - id: s5
+          subProgram:
+            value: "%%f89423ad-7e45-4105-b5be-935167a18570"
+          inputs:
+            locator: role
+            pageUrlPattern: "https://pan.baidu.com/s/*"
+            role: button
+            timeoutMs: "10000"
+            url:
+              var: shareUrl
+            value: 下载
+            waitMs: "4000"
+          outputs:
+            ok: okClick
+        - id: s6
+          if:
+            condition: "$={okClick} == true"
+            then:
+              - id: s7
+                notify:
+                  msg: 已触发下载，网盘客户端会接管任务
+                  type: Success
+            else:
+              - id: s8
+                notify:
+                  msg: 分享页已打开，但自动点下载失败，请手动点一下
+                  type: Warning
+subPrograms: []

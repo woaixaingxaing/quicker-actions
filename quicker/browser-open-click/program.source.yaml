@@ -1,0 +1,105 @@
+$schema: quicker.program.source.v1
+variables:
+  - key: url
+    varType: text
+    isInput: true
+    default: ""
+  - key: locator
+    varType: text
+    isInput: true
+    default: role
+  - key: value
+    varType: text
+    isInput: true
+    default: ""
+  - key: role
+    varType: text
+    isInput: true
+    default: button
+  - key: pageUrlPattern
+    varType: text
+    isInput: true
+    default: ""
+  - key: waitMs
+    varType: integer
+    isInput: true
+    default: "2500"
+  - key: timeoutMs
+    varType: integer
+    isInput: true
+    default: "10000"
+  - key: ok
+    varType: boolean
+    isOutput: true
+steps:
+  - id: s1
+    if:
+      condition: '$=!string.IsNullOrWhiteSpace({url})'
+      then:
+        - id: s2
+          chromecontrol:
+            operation: OpenUrl
+            url:
+              var: url
+            windowId: Current
+            timeoutMs: 8000
+            waitComplete: true
+            stopIfFail: false
+  - id: s3
+    delay:
+      delayMs:
+        var: waitMs
+  - id: s4
+    if:
+      condition: '$={locator} == "css"'
+      then:
+        - id: s5
+          chromecontrol:
+            operation: PageAction
+            pageUrlPattern:
+              var: pageUrlPattern
+            pageLocator: css
+            pageLocatorValue:
+              var: value
+            pageOperation: click
+            timeoutMs:
+              var: timeoutMs
+            stopIfFail: false
+            outputs:
+              isSuccess: ok
+      else if:
+        id: s6
+        condition: '$={locator} == "text"'
+        then:
+          - id: s7
+            chromecontrol:
+              operation: PageAction
+              pageUrlPattern:
+                var: pageUrlPattern
+              pageLocator: text
+              pageLocatorValue:
+                var: value
+              pageExact: true
+              pageOperation: click
+              timeoutMs:
+                var: timeoutMs
+              stopIfFail: false
+              outputs:
+                isSuccess: ok
+        else:
+          - id: s8
+            chromecontrol:
+              operation: PageAction
+              pageUrlPattern:
+                var: pageUrlPattern
+              pageLocator: role
+              pageLocatorRole:
+                var: role
+              pageLocatorValue:
+                var: value
+              pageOperation: click
+              timeoutMs:
+                var: timeoutMs
+              stopIfFail: false
+              outputs:
+                isSuccess: ok
