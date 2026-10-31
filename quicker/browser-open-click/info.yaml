@@ -1,0 +1,4 @@
+$schema: quicker.action.info.v1
+title: 网页打开并点击
+description: 通用浏览器操作：可选打开网址，等待后按 role/text/css 定位并点击元素。参数：url（留空=不打开）、locator（role/text/css，默认 role）、value（定位值）、role（默认 button）、pageUrlPattern（页面约束，留空不限）、waitMs（默认 2500）、timeoutMs（默认 10000）。输出 ok。
+icon: "fa:Light_HandPointer"
