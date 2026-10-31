@@ -1,5 +1,14 @@
 # 更新记录
 
+## 2026-11-01 — Quicker 动作合集整理
+
+- 新增 quicker/netdisk-download/（网盘下载）：剪贴板出现百度网盘分享链接时，用已登录的 Chrome 打开分享页并自动点击「下载」，由客户端接管。2026-11-01 全流程实测通过。
+- 新增 quicker/quark-download/（夸克下载）：同一结构处理 pan.quark.cn/s/ 与 drive.quark.cn/s/ 链接；触发已配好，夸克页面结构待实测。
+- 新增 quicker/browser-open-click/（公共子程序）：通用「打开网址 + 按 role/text/css 定位点击」，上面两个动作共用。
+- 新增 quicker/README.md 作为全部 Quicker 动作的统一索引。
+- 更新 quicker/触发器配置.md：合并网盘、夸克与米家插座的全部触发器说明，并注明免费版 2 条事件触发配额。
+- 根 README 补充动作合集入口与目录说明。
+
 ## 2026-10-26 — transfer-idle-watchdog v1.0.4 多进程空闲判定修复
 
 - 空闲判定改为按 PID 单独比对 I/O 增量：新出现的辅助进程只记基线，子进程起落既不算活动也不重置倒计时，避免夸克网盘这类 Electron 客户端整夜不被清理。

@@ -4,6 +4,8 @@
 > 没有云端定时，没有额外硬件，只靠 Windows 的两个系统事件。
 >
 > 仓库里还有一个独立的 Quicker 动作：[传输空闲自动清后台](quicker/transfer-idle-watchdog/README.md)。它监控指定软件的上传/下载，连续空闲达到设定时间后结束后台进程；默认针对百度网盘 5 分钟。
+>
+> 其他 Quicker 动作（网盘下载、夸克下载、网页打开并点击子程序）统一收录在 [quicker/ 动作合集](quicker/README.md)。
 
 ![米家插座自动化示意图](米家插座自动化示意图.png)
 
@@ -48,7 +50,11 @@ flowchart LR
 ├─ quicker/
 │  ├─ 米家插座-开启.operation.json   # Quicker「运行或打开」动作配置
 │  ├─ 米家插座-关闭.operation.json
-│  ├─ 触发器配置.md                  # 三条触发器的接法
+│  ├─ README.md                      # 全部 Quicker 动作索引
+│  ├─ 触发器配置.md                  # 全部触发器接法
+│  ├─ netdisk-download/              # 剪贴板百度链接 → 打开分享页并自动下载
+│  ├─ quark-download/                # 剪贴板夸克链接 → 打开分享页并自动下载
+│  ├─ browser-open-click/            # 公共子程序：打开网址 + 定位点击
 │  └─ transfer-idle-watchdog/        # 独立动作：传输空闲自动清后台
 ├─ 米家插座自动化示意图.html          # 示意图源文件
 └─ 米家插座自动化示意图.png           # 成品图
