@@ -1,5 +1,13 @@
 # 更新记录
 
+## 2026-11-02 — 网盘下载：定位与打开方式修复
+
+- `quicker/netdisk-download/` 改为内联浏览器步骤，不再依赖公共子程序。
+- 修复后台标签页导致 Quicker 扩展无响应：`windowInfo` 改为 `{"active": true}`。
+- 修复 `[title="下载"]` 同时匹配顶部工具栏和右下角两个按钮导致点击失败：改用唯一选择器 `button.bottom_download_btn`。
+- `OpenUrl` 改为 `waitComplete: false`，`Wait` 超时放宽到 30 秒，给分享页提取码流程留时间。
+- 更新动作 README 的流程、变量和关键实现说明。
+
 ## 2026-11-01 — Quicker 动作合集整理
 
 - 新增 quicker/netdisk-download/（网盘下载）：剪贴板出现百度网盘分享链接时，用已登录的 Chrome 打开分享页并自动点击「下载」，由客户端接管。2026-11-01 全流程实测通过。

@@ -6,6 +6,8 @@ variables:
     varType: text
   - key: okClick
     varType: boolean
+  - key: tabId
+    varType: integer
 steps:
   - id: s1
     getClipboardText:
@@ -24,30 +26,56 @@ steps:
             type: Warning
       else:
         - id: s5
-          subProgram:
-            value: "%%f89423ad-7e45-4105-b5be-935167a18570"
-          inputs:
-            locator: role
-            pageUrlPattern: "https://pan.baidu.com/s/*"
-            role: button
-            timeoutMs: "10000"
+          chromecontrol:
+            operation: SetBrowser
+            browser: chrome
+            stopIfFail: false
+        - id: s6
+          chromecontrol:
+            operation: OpenUrl
             url:
               var: shareUrl
-            value: 下载
-            waitMs: "4000"
-          outputs:
-            ok: okClick
-        - id: s6
+            windowId: Current
+            windowInfo: '{"active": true}'
+            timeoutMs: 20000
+            waitComplete: false
+            stopIfFail: false
+            outputs:
+              tabId: tabId
+        - id: s7
           if:
-            condition: "$={okClick} == true"
+            condition: "$={tabId} > 0"
             then:
-              - id: s7
-                notify:
-                  msg: 已触发下载，网盘客户端会接管任务
-                  type: Success
-            else:
               - id: s8
+                chromecontrol:
+                  operation: Wait
+                  tabId: "$={tabId}.ToString()"
+                  selector: 'button.bottom_download_btn'
+                  waitEventType: elementClickable
+                  timeoutMs: "30000"
+                  stopIfFail: false
+              - id: s9
+                chromecontrol:
+                  operation: PageAction
+                  tabId: "$={tabId}.ToString()"
+                  pageLocator: css
+                  pageLocatorValue: 'button.bottom_download_btn'
+                  pageOperation: click
+                  timeoutMs: "8000"
+                  stopIfFail: false
+                  outputs:
+                    isSuccess: okClick
+              - id: s11
+                if:
+                  condition: "$={okClick} != true"
+                  then:
+                    - id: s18
+                      notify:
+                        msg: 没找到下载按钮或点击失败，请手动处理
+                        type: Warning
+            else:
+              - id: s14
                 notify:
-                  msg: 分享页已打开，但自动点下载失败，请手动点一下
+                  msg: 浏览器没有打开分享页，请检查 Chrome
                   type: Warning
 subPrograms: []
