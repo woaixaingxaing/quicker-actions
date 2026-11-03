@@ -1,4 +1,4 @@
 $schema: quicker.action.info.v1
 title: 网盘下载
-description: 剪贴板出现百度网盘分享链接时，用已登录的 Chrome 打开分享页并自动点击下载，唤起客户端开始下载
+description: 剪贴板出现百度网盘分享链接时，在后台标签页打开分享页并自动点击下载，唤起客户端开始下载；定位交给公共子程序「网页打开并点击」
 icon: "fa:Light_ArrowAltToRight"
