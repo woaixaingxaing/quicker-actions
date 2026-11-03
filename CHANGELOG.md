@@ -1,5 +1,15 @@
 # 更新记录
 
+## 2026-11-04 — 定位改走元素链 + 浏览器静默
+
+- `quicker/netdisk-download/` 不再内联浏览器步骤，改为调用公共子程序「网页打开并点击」；动作只剩「读剪贴板 → 调子程序 → 日志/提示」。
+- 删除写死的 `button.bottom_download_btn`：分享页改版或按钮语义变化就会失效。
+- 公共子程序 `quicker/browser-open-click/` 新增两个参数：`active`（默认 false，后台标签页，不抢焦点）、`autoFallback`（默认 true）；新增输出 `matched` / `tabId`。
+- 回退链：主定位（role/text/css）失败后依次尝试 文本精确 → 按钮角色 → 链接角色 → 模糊文本。
+- 修正 2026-11-02 的结论：后台标签页 `{"active": false}` 可以正常点击（实测 3.1 秒）；但后台标签页下文本精确定位常报 `No descriptor locator resolved to an actionable element`，角色定位更稳，因此需要回退链。
+- 触发器文本匹配由 `pan\.baidu\.com/s/` 放宽为 `.*pan\.baidu\.com/s/.*`，匹配「链接: … 提取码: …」这类整段剪贴板文本。
+- 更新两个动作与公开子程序的 README。
+
 ## 2026-11-02 — 网盘下载：定位与打开方式修复
 
 - `quicker/netdisk-download/` 改为内联浏览器步骤，不再依赖公共子程序。
