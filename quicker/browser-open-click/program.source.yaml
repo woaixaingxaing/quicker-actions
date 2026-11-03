@@ -28,8 +28,21 @@ variables:
     varType: integer
     isInput: true
     default: "10000"
+  - key: active
+    varType: boolean
+    isInput: true
+  - key: autoFallback
+    varType: boolean
+    isInput: true
+    default: "true"
   - key: ok
     varType: boolean
+    isOutput: true
+  - key: matched
+    varType: text
+    isOutput: true
+  - key: tabId
+    varType: integer
     isOutput: true
 steps:
   - id: s1
@@ -42,9 +55,12 @@ steps:
             url:
               var: url
             windowId: Current
-            timeoutMs: 8000
+            windowInfo: '$={active} ? "{\"active\":true}" : "{\"active\":false}"'
+            timeoutMs: 15000
             waitComplete: true
             stopIfFail: false
+            outputs:
+              tabId: tabId
   - id: s3
     delay:
       delayMs:
@@ -53,9 +69,20 @@ steps:
     if:
       condition: '$={locator} == "css"'
       then:
+        - id: s10
+          chromecontrol:
+            operation: Wait
+            tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
+            selector:
+              var: value
+            waitEventType: elementClickable
+            timeoutMs:
+              var: timeoutMs
+            stopIfFail: false
         - id: s5
           chromecontrol:
             operation: PageAction
+            tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
             pageUrlPattern:
               var: pageUrlPattern
             pageLocator: css
@@ -74,6 +101,7 @@ steps:
           - id: s7
             chromecontrol:
               operation: PageAction
+              tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
               pageUrlPattern:
                 var: pageUrlPattern
               pageLocator: text
@@ -90,6 +118,7 @@ steps:
           - id: s8
             chromecontrol:
               operation: PageAction
+              tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
               pageUrlPattern:
                 var: pageUrlPattern
               pageLocator: role
@@ -103,3 +132,123 @@ steps:
               stopIfFail: false
               outputs:
                 isSuccess: ok
+  - id: s11
+    if:
+      condition: "$={ok}"
+      then:
+        - id: s12
+          assign:
+            input:
+              var: locator
+            >>: matched
+  - id: s13
+    if:
+      condition: "$={ok} == false && {autoFallback}"
+      then:
+        - id: s14
+          chromecontrol:
+            operation: PageAction
+            tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
+            pageLocator: text
+            pageLocatorValue:
+              var: value
+            pageExact: true
+            pageOperation: click
+            timeoutMs: 4000
+            stopIfFail: false
+            outputs:
+              isSuccess: ok
+        - id: s15
+          if:
+            condition: "$={ok}"
+            then:
+              - id: s16
+                assign:
+                  input: "text:exact"
+                  >>: matched
+        - id: s17
+          if:
+            condition: "$={ok} == false"
+            then:
+              - id: s18
+                chromecontrol:
+                  operation: PageAction
+                  tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
+                  pageLocator: role
+                  pageLocatorRole: button
+                  pageLocatorValue:
+                    var: value
+                  pageOperation: click
+                  timeoutMs: 4000
+                  stopIfFail: false
+                  outputs:
+                    isSuccess: ok
+              - id: s19
+                if:
+                  condition: "$={ok}"
+                  then:
+                    - id: s20
+                      assign:
+                        input: "role:button"
+                        >>: matched
+        - id: s21
+          if:
+            condition: "$={ok} == false"
+            then:
+              - id: s22
+                chromecontrol:
+                  operation: PageAction
+                  tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
+                  pageLocator: role
+                  pageLocatorRole: link
+                  pageLocatorValue:
+                    var: value
+                  pageOperation: click
+                  timeoutMs: 4000
+                  stopIfFail: false
+                  outputs:
+                    isSuccess: ok
+              - id: s23
+                if:
+                  condition: "$={ok}"
+                  then:
+                    - id: s24
+                      assign:
+                        input: "role:link"
+                        >>: matched
+        - id: s25
+          if:
+            condition: "$={ok} == false"
+            then:
+              - id: s26
+                chromecontrol:
+                  operation: PageAction
+                  tabId: "$={tabId} > 0 ? {tabId}.ToString() : \"\""
+                  pageLocator: text
+                  pageLocatorValue:
+                    var: value
+                  pageExact: false
+                  pageOperation: click
+                  timeoutMs: 4000
+                  stopIfFail: false
+                  outputs:
+                    isSuccess: ok
+              - id: s27
+                if:
+                  condition: "$={ok}"
+                  then:
+                    - id: s28
+                      assign:
+                        input: "text:fuzzy"
+                        >>: matched
+  - id: s29
+    if:
+      condition: "$={ok} == false"
+      then:
+        - id: s30
+          assign:
+            input: "notfound"
+            >>: matched
+  - id: s31
+    log:
+      message: '$="网页打开并点击：" + {value} + " → " + {matched} + "（tab " + {tabId}.ToString() + "）"'
