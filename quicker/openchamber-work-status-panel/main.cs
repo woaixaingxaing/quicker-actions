@@ -1,57 +1,53 @@
-// 鼠标离开 OpenChamber 窗口时，自动打开右上角「工作状态」面板，
-// 让 TPS / 用量 / 系统状态随时可见。
-// 触发方式：「定时重复」事件，每秒一次。刚离开窗口立即处理，离开期间每 10 秒复核一次。
-// 只用 UI Automation 读取按钮状态并按下，不移动鼠标、不抢焦点；已经开着时什么都不做。
-
-void Main()
+void Main(string quicker_in_param = "")
 {
+    // 触发在右键按下瞬间；稍等，让点击/选区状态稳定。
+    System.Threading.Thread.Sleep(120);
+
+    // 读取选区会动剪贴板；先备份，粘贴时再放回去（内置恢复不包含图片格式）。
+    Img img = null;
+    string clipText = "";
+    string[] clipFiles = new string[0];
+    try { img = qk.Clipboard.GetImage(); } catch { }
+    try { clipText = qk.Clipboard.GetText() ?? ""; } catch { }
+    try { clipFiles = qk.Clipboard.GetFiles(); } catch { }
+
+    string selected = "";
     try
     {
-        EnsurePanel();
+        selected = qk.Selection.GetText(400) ?? "";
     }
-    catch
+    catch (ActionApiException ex) when (ex.Code.Value == "SELECTION_FAILED")
     {
-        // 后台轮询，失败时保持安静
+        selected = "";
     }
-}
 
-void EnsurePanel()
-{
-    WinInfo target = null;
-    var wins = qk.Window.FindAllInfo(process: "OpenChamber");
-    foreach (var w in wins)
+    var key = string.IsNullOrEmpty(selected) ? "Ctrl+V" : "Ctrl+C";
+    var fg = qk.Window.GetForeground();
+    qk.Log("[智能复制粘贴] selLen=" + selected.Length + " key=" + key + " img=" + (img != null) + " fg=" + (fg != null ? fg.Title : "?"));
+
+    if (key == "Ctrl+V")
     {
-        if (!w.Visible || w.State == "minimized") continue;
-        if (target == null || w.Bounds.Width * w.Bounds.Height > target.Bounds.Width * target.Bounds.Height)
+        if (img != null) qk.Clipboard.SetImage(img);
+        else if (clipFiles.Length > 0) qk.Clipboard.SetFiles(clipFiles);
+        else if (clipText.Length > 0) qk.Clipboard.SetText(clipText);
+    }
+
+    // 鼠标还按着时 qk 会拒绝模拟输入，松开后重试。
+    var deadline = System.Environment.TickCount64 + 2500;
+    while (System.Environment.TickCount64 < deadline)
+    {
+        try
         {
-            target = w;
+            qk.Keyboard.Press(key);
+            qk.Ui.Notify(key == "Ctrl+C" ? "已复制" : "已粘贴", "info", null, 1200, "bottomCenter");
+            return;
         }
-    }
-    if (target == null) return;
-
-    var b = target.Bounds;
-    var p = qk.Mouse.GetPosition();
-    bool inside = p.X >= b.X && p.X <= b.X + b.Width && p.Y >= b.Y && p.Y <= b.Y + b.Height;
-
-    bool wasInside = qk.State.Get<bool>("wasInside", false);
-    if (inside)
-    {
-        if (!wasInside) qk.State.Set("wasInside", true);
-        return;
+        catch (ActionApiException ex) when (ex.Code.Value == "INPUT_USER_ACTIVE")
+        {
+        }
+        System.Threading.Thread.Sleep(30);
     }
 
-    bool justLeft = wasInside;
-    long lastTicks = qk.State.Get<long>("lastCheckTicks", 0L);
-    double age = (DateTime.UtcNow.Ticks - lastTicks) / 10000000.0;
-    if (!justLeft && age >= 0 && age < 10) return;
-
-    qk.State.Set("lastCheckTicks", DateTime.UtcNow.Ticks);
-    if (justLeft) qk.State.Set("wasInside", false);
-
-    var toggle = qk.Uia.Find(target.Window, name: "切换工作状态面板");
-    if (toggle == null) toggle = qk.Uia.Find(target.Window, name: "Toggle work status panel");
-    if (toggle == null) return;
-
-    if (qk.Uia.Info(toggle).Toggled == true) return;
-    qk.Uia.Act(toggle, "check");
+    qk.Keyboard.Press(key);
+    qk.Ui.Notify(key == "Ctrl+C" ? "已复制" : "已粘贴", "info", null, 1200, "bottomCenter");
 }
