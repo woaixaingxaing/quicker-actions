@@ -10,7 +10,7 @@
 | [夸克下载](quark-download/README.md) | 组合动作 | 剪贴板含 `(pan\|drive).quark.cn/s/` | 同上，针对夸克网盘 |
 | [网页打开并点击](browser-open-click/README.md) | 公共子程序 | 被其他动作调用 | 通用浏览器操作：打开网址 + 按 role / text / css 定位并点击，失败自动回退 |
 | [传输空闲自动清后台](transfer-idle-watchdog/README.md) | C# 脚本动作 | 进程启动 / 定时自检 | 监控指定软件的上传下载，连续空闲后结束后台进程 |
-| [OpenChamber 面板常显](openchamber-work-status-panel/README.md) | C# 脚本动作 | 定时重复（1 秒） | 鼠标离开 OpenChamber 窗口时，确保右上角「工作状态」面板处于打开状态 |
+| [OpenChamber 面板开关](openchamber-work-status-panel/README.md) | C# 脚本动作 | 动作快捷键 `Ctrl + Alt + P` | 一键开关 OpenChamber 右上角「工作状态」面板（会话 / TPS / 用量 / MCP） |
 | 米家插座 开启 / 关闭 | 运行或打开 | 锁屏 / 解锁 / 双击右 Ctrl | 由 `米家插座-*.operation.json` 提供，接线说明见 [触发器配置](触发器配置.md) |
 
 ## 触发器总览
@@ -20,7 +20,7 @@
 | 网盘下载 | 剪贴板内容改变 `ClipboardChanged` | 内容类型 `TEXT`；文本匹配 `.*pan\.baidu\.com/s/.*` |
 | 夸克下载 | 剪贴板内容改变 `ClipboardChanged` | 内容类型 `TEXT`；文本匹配 `(pan\|drive)\.quark\.cn/s/` |
 | 传输空闲自动清后台 | 进程启动 `ProcessStarted` | `BaiduNetdisk;quark_cloud_drive` |
-| OpenChamber 面板常显 | 定时重复 `Repeat` | 重复间隔 1 秒；最大重复次数 0（不限） |
+| OpenChamber 面板开关 | 动作快捷键 | `Ctrl + Alt + P` |
 | 米家插座 关闭 | 计算机锁定 `SessionLock` | — |
 | 米家插座 开启 | 计算机解锁 `SessionUnlock` | — |
 | 米家插座 开启 | 按键双击 | 右 Ctrl（VK 163） |
