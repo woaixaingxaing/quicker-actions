@@ -1,0 +1,4 @@
+$schema: quicker.action.info.v1
+title: OpenChamber 工作状态面板常显
+description: 鼠标离开 OpenChamber 窗口时，自动打开右上角的工作状态面板，让 TPS/用量随时可见。
+icon: "https://files.getquicker.net/_icons/05FFD9FE1FA8B25AF7447ED48E19BBCC05F507FD.svg"
