@@ -1,4 +1,4 @@
 $schema: quicker.action.info.v1
 title: 网页打开并点击
-description: 通用浏览器操作：可选打开网址，等待后按 role/text/css 定位并点击元素。参数：url（留空=不打开）、locator（role/text/css，默认 role）、value（定位值）、role（默认 button）、pageUrlPattern（页面约束，留空不限）、waitMs（默认 2500）、timeoutMs（默认 10000）。输出 ok。
+description: 通用浏览器操作：可选打开网址（默认后台标签页，不抢焦点），等待后按 role/text/css 定位并点击元素；主定位失败时自动依次回退为文本精确、按钮角色、链接角色、模糊文本。参数：url（留空=不打开）、locator（role/text/css，默认 role）、value（定位值）、role（默认 button）、pageUrlPattern（页面约束，留空不限）、waitMs（默认 2500）、timeoutMs（默认 10000）、active（是否切到前台，默认 false）、autoFallback（失败自动回退，默认 true）。输出 ok、matched（命中方式）、tabId。
 icon: "fa:Light_HandPointer"
