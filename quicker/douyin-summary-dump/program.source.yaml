@@ -1,0 +1,30 @@
+$schema: quicker.program.source.v1
+variables:
+  - key: payload
+    varType: text
+  - key: added
+    varType: text
+    default: "0"
+  - key: okRead
+    varType: boolean
+steps:
+  - id: s1
+    chromecontrol:
+      executionWorld: USER_SCRIPT
+      frame: "0"
+      operation: RunScript
+      script:
+        file: files/chromecontrol1.js
+      stopIfFail: "false"
+      timeoutMs: "5000"
+      outputs:
+        isSuccess: okRead
+        rawResponse: payload
+  - id: s2
+    assign:
+      input:
+        file: files/assign1.txt
+      >>: added
+  - id: s3
+    log: "$=\"抖音总结落盘：\" + {added}"
+subPrograms: []

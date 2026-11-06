@@ -1,0 +1,234 @@
+$=public static string AppendSummaryJson(string jsonText)
+{
+    const string path = @"F:\OneDrive\Desktop\CODEX\analysis\reference_downloads_20260628_institution\PDF\抖音AI总结-2026-11-03.md";
+    const string tocStartMark = "<!-- dy-toc-start -->";
+    const string tocEndMark = "<!-- dy-toc-end -->";
+    const string docTitle = "# 抖音 AI 总结记录";
+    int changed = 0;
+    int skipped = 0;
+    var errors = new List<string>();
+    // 多个抖音标签页会同时 ping：同一时刻只让一个运行读-改-写，避免互相覆盖丢更新
+    System.Threading.Mutex gate = null;
+    var gotGate = false;
+    try
+    {
+        gate = new System.Threading.Mutex(false, @"Local\QuickerDouyinSummaryDump");
+        gotGate = gate.WaitOne(TimeSpan.FromSeconds(15));
+    }
+    catch (System.Threading.AbandonedMutexException)
+    {
+        // 上一个持有者被强杀，互斥量归本次所有
+        gotGate = true;
+    }
+    catch (Exception gateEx)
+    {
+        errors.Add("互斥量不可用：" + gateEx.Message);
+    }
+    try
+    {
+        var text = (jsonText ?? "").Trim();
+        if (text.StartsWith("```"))
+        {
+            var first = text.IndexOf('\n');
+            if (first >= 0) text = text.Substring(first + 1);
+            var last = text.LastIndexOf("```");
+            if (last >= 0) text = text.Substring(0, last);
+            text = text.Trim();
+        }
+        if (text.Length == 0) return "0（读取为空：扩展没连上，或活动标签页不是抖音）";
+        if (!text.StartsWith("[") && !text.StartsWith("{")) return "0（不是 JSON，已跳过）";
+        var root = JToken.Parse(text);
+        var dataToken = root.Type == JTokenType.Object && root["data"] != null ? root["data"] : root;
+        var arr = dataToken.Type == JTokenType.String ? JArray.Parse((string)dataToken) : dataToken as JArray;
+        if (arr == null) return "0（没有数组，已跳过）";
+
+        var existing = File.Exists(path) ? File.ReadAllText(path, Encoding.UTF8) : docTitle + "\n\n";
+        var sb = new StringBuilder(existing);
+        if (sb.Length > 0 && !sb.ToString().EndsWith("\n")) sb.Append("\n");
+
+        foreach (var token in arr)
+        {
+            var item = token as JObject;
+            if (item == null) continue;
+            // 单条出错不再让整个写入失败，记下原因继续处理后面的条目
+            try
+            {
+                var at = (long?)item["at"] ?? 0;
+                var awemeId = (string)item["awemeId"] ?? "";
+                var author = (string)item["author"] ?? "";
+                if (string.IsNullOrWhiteSpace(author)) author = "未知博主";
+                var title = (string)item["title"] ?? "";
+                var url = (string)item["url"] ?? "";
+                if (string.IsNullOrWhiteSpace(url) && !string.IsNullOrWhiteSpace(awemeId)) url = "https://www.douyin.com/video/" + awemeId;
+                var tagList = new List<string>();
+                var tags = item["tags"] as JArray;
+                if (tags != null)
+                {
+                    foreach (var tagToken in tags)
+                    {
+                        var tag = (string)tagToken;
+                        if (!string.IsNullOrWhiteSpace(tag)) tagList.Add("#" + tag);
+                    }
+                }
+                var tagText = string.Join(" ", tagList.ToArray());
+                var summary = ((string)item["summary"] ?? "").Trim();
+                if (summary.Length < 10) { skipped++; continue; }
+                var time = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(at).ToLocalTime();
+                var timeText = time.ToString("yyyy-MM-dd HH:mm");
+                var header = "## " + timeText + "  @" + author;
+                var anchor = "dy-" + (!string.IsNullOrWhiteSpace(awemeId) ? awemeId : at.ToString());
+                var anchorTag = "<a id=\"" + anchor + "\" name=\"" + anchor + "\"></a>";
+                var section = anchorTag + "\n" + header + "\n";
+                if (!string.IsNullOrWhiteSpace(title)) section += "> " + title.Replace("\n", " ").Replace("\r", " ") + "\n";
+                if (!string.IsNullOrWhiteSpace(tagText)) section += "> 标签：" + tagText + "\n";
+                if (!string.IsNullOrWhiteSpace(url)) section += "> [原视频](" + url + ")\n";
+                section += "\n" + summary + "\n";
+
+                var current = sb.ToString();
+                var anchorAt = current.IndexOf("<a id=\"" + anchor + "\"", StringComparison.Ordinal);
+                int sectionStart = anchorAt;
+                int bodyStart = -1;
+                if (sectionStart >= 0)
+                {
+                    // 锚点行 + 标题行之后才是正文；不依赖标题文字，改时间格式也能对上原段落
+                    var afterAnchor = current.IndexOf('\n', sectionStart);
+                    var afterHeader = afterAnchor >= 0 ? current.IndexOf('\n', afterAnchor + 1) : -1;
+                    bodyStart = afterHeader >= 0 ? afterHeader : current.Length;
+                }
+                else
+                {
+                    var headerAt = current.IndexOf(header + "\n", StringComparison.Ordinal);
+                    if (headerAt >= 0)
+                    {
+                        // 同作者同一分钟会撞标题：只有这一段自己没有锚点（老格式）才按标题替换，
+                        // 否则说明标题属于别的视频，改成追加，避免覆盖别人的记录
+                        var from = Math.Max(0, headerAt - 2);
+                        var prevAnchor = current.LastIndexOf("<a id=\"dy-", Math.Max(0, headerAt - 1), StringComparison.Ordinal);
+                        var prevHeader = current.LastIndexOf("\n## ", from, StringComparison.Ordinal);
+                        var ownedByOtherAnchor = prevAnchor >= 0 && prevAnchor > prevHeader;
+                        if (!ownedByOtherAnchor)
+                        {
+                            sectionStart = headerAt;
+                            var afterHeader2 = current.IndexOf('\n', headerAt);
+                            bodyStart = afterHeader2 >= 0 ? afterHeader2 : current.Length;
+                        }
+                    }
+                }
+
+                if (sectionStart >= 0 && bodyStart >= sectionStart)
+                {
+                    var nextAt = current.Length;
+                    var nextAnchor = current.IndexOf("\n<a id=\"dy-", bodyStart, StringComparison.Ordinal);
+                    var nextHeader = current.IndexOf("\n## ", bodyStart, StringComparison.Ordinal);
+                    if (nextAnchor >= 0 && nextAnchor < nextAt) nextAt = nextAnchor;
+                    if (nextHeader >= 0 && nextHeader < nextAt) nextAt = nextHeader;
+                    if (nextAt < bodyStart) nextAt = current.Length;
+                    if (current.Substring(sectionStart, nextAt - sectionStart) != section)
+                    {
+                        sb.Remove(sectionStart, nextAt - sectionStart);
+                        sb.Insert(sectionStart, section);
+                        changed++;
+                    }
+                }
+                else
+                {
+                    sb.Append("\n");
+                    sb.Append(section);
+                    changed++;
+                }
+            }
+            catch (Exception itemEx)
+            {
+                errors.Add(itemEx.Message);
+            }
+        }
+
+        // 目录按文件里实际存在的锚点重建：不在本批数据里的老条目也不会从目录里消失
+        var all = sb.ToString();
+        var tocLines = new List<string>();
+        var scan = 0;
+        while (true)
+        {
+            var aStart = all.IndexOf("<a id=\"dy-", scan, StringComparison.Ordinal);
+            if (aStart < 0) break;
+            var nameStart = aStart + "<a id=\"".Length;
+            var nameEnd = all.IndexOf('\"', nameStart);
+            if (nameEnd < 0) break;
+            var anchorName = all.Substring(nameStart, nameEnd - nameStart);
+            var lineEnd = all.IndexOf('\n', nameEnd);
+            if (lineEnd >= 0 && lineEnd + 4 <= all.Length && all.Substring(lineEnd + 1, 3) == "## ")
+            {
+                var headEnd = all.IndexOf('\n', lineEnd + 1);
+                if (headEnd < 0) headEnd = all.Length;
+                var headText = all.Substring(lineEnd + 4, headEnd - lineEnd - 4).Trim();
+                tocLines.Add("- [" + headText + "](#" + anchorName + ")");
+            }
+            scan = nameEnd + 1;
+        }
+
+        if (tocLines.Count > 0)
+        {
+            var s = all.IndexOf(tocStartMark, StringComparison.Ordinal);
+            var e = all.IndexOf(tocEndMark, StringComparison.Ordinal);
+            if (s >= 0 && e > s)
+            {
+                // 连带吃掉目录后面的空行，否则每写一次就多一个空行
+                var removeEnd = e + tocEndMark.Length;
+                while (removeEnd < all.Length && (all[removeEnd] == '\n' || all[removeEnd] == '\r')) removeEnd++;
+                sb.Remove(s, removeEnd - s);
+            }
+            var tocBlock = tocStartMark + "\n## 目录\n\n" + string.Join("\n", tocLines.ToArray()) + "\n" + tocEndMark + "\n";
+            var titleAt = sb.ToString().IndexOf(docTitle, StringComparison.Ordinal);
+            if (titleAt < 0)
+            {
+                sb.Insert(0, docTitle + "\n");
+                titleAt = 0;
+            }
+            sb.Insert(titleAt + docTitle.Length, "\n" + tocBlock + "\n");
+        }
+
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        var finalText = sb.ToString();
+        // 内容没变就不写盘：兜底触发反复跑到时，避免一遍遍重写同一个文件（OneDrive 会跟着同步）
+        if (string.Equals(finalText, existing, StringComparison.Ordinal))
+        {
+            return changed + "（内容无变化，未写入）";
+        }
+        // OneDrive 同步或编辑器占用会短暂锁文件，重试两次再放弃
+        Exception writeError = null;
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                File.WriteAllText(path, finalText, new UTF8Encoding(false));
+                writeError = null;
+                break;
+            }
+            catch (Exception writeEx)
+            {
+                writeError = writeEx;
+                System.Threading.Thread.Sleep(250);
+            }
+        }
+        if (writeError != null) return "ERR:写入失败 " + writeError.Message;
+
+        var note = changed.ToString();
+        if (skipped > 0) note += "，跳过 " + skipped;
+        if (errors.Count > 0) note += "，出错 " + errors.Count + " 条：" + string.Join(" / ", errors.ToArray());
+        return note;
+    }
+    catch (Exception ex)
+    {
+        return "ERR:" + ex.Message;
+    }
+    finally
+    {
+        if (gotGate)
+        {
+            try { gate.ReleaseMutex(); } catch (Exception) { }
+        }
+        if (gate != null) gate.Dispose();
+    }
+}
+return AppendSummaryJson({payload});

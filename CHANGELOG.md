@@ -1,5 +1,12 @@
 # 更新记录
 
+## 2026-11-06 — 新增：抖音 AI 总结静默落盘
+
+- 新增 `quicker/douyin-summary-dump/`（总结落盘）：抖音页生成 AI 总结后，油猴脚本把 URL hash 改成 `#dy-summary-<时间戳>`，Quicker 的「浏览器网址变更」事件延迟 200ms 触发，动作读取 `localStorage` 并按 `awemeId` 锚点幂等合并进 Markdown。
+- 读取步骤改用扩展新版写法（`async` 函数末尾返回），去掉 `sendReplyToQuicker` 与 `waitManualReturn`；顶层 `return` 在 `RunScript` 里无效，已在动作 README 记下这个坑。
+- 落盘 C# 增加 `Local\QuickerDouyinSummaryDump` 互斥量，避免多个抖音标签页同时 ping 造成读-改-写丢更新；空读取时给出明确诊断文案。
+- 触发正则放宽到 `(?:www|m)\.douyin\.com` 且不再要求 hash 尾部带 `-`。
+
 ## 2026-11-04 — 定位改走元素链 + 浏览器静默
 
 - `quicker/netdisk-download/` 不再内联浏览器步骤，改为调用公共子程序「网页打开并点击」；动作只剩「读剪贴板 → 调子程序 → 日志/提示」。

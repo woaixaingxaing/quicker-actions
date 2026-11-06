@@ -11,6 +11,7 @@
 | [网页打开并点击](browser-open-click/README.md) | 公共子程序 | 被其他动作调用 | 通用浏览器操作：打开网址 + 按 role / text / css 定位并点击，失败自动回退 |
 | [传输空闲自动清后台](transfer-idle-watchdog/README.md) | C# 脚本动作 | 进程启动 / 定时自检 | 监控指定软件的上传下载，连续空闲后结束后台进程 |
 | [OpenChamber 面板开关](openchamber-work-status-panel/README.md) | C# 脚本动作 | 动作快捷键 `Ctrl + Alt + P` | 一键开关 OpenChamber 右上角「工作状态」面板（会话 / TPS / 用量 / MCP） |
+| [抖音 AI 总结静默落盘](douyin-summary-dump/README.md) | 组合动作 | 浏览器网址变更 `BrowserUrlChanged` | 抖音页生成 AI 总结后，自动把 localStorage 里的总结幂等合并进 Markdown |
 | 米家插座 开启 / 关闭 | 运行或打开 | 锁屏 / 解锁 / 双击右 Ctrl | 由 `米家插座-*.operation.json` 提供，接线说明见 [触发器配置](触发器配置.md) |
 
 ## 触发器总览
@@ -21,6 +22,7 @@
 | 夸克下载 | 剪贴板内容改变 `ClipboardChanged` | 内容类型 `TEXT`；文本匹配 `(pan\|drive)\.quark\.cn/s/` |
 | 传输空闲自动清后台 | 进程启动 `ProcessStarted` | `BaiduNetdisk;quark_cloud_drive` |
 | OpenChamber 面板开关 | 动作快捷键 | `Ctrl + Alt + P` |
+| 抖音 AI 总结静默落盘 | 浏览器网址变更 `BrowserUrlChanged` | `regex:^https://(?:www\|m)\.douyin\.com/.*#dy-summary`；只活动标签页；节流 1000ms；延迟 200ms |
 | 米家插座 关闭 | 计算机锁定 `SessionLock` | — |
 | 米家插座 开启 | 计算机解锁 `SessionUnlock` | — |
 | 米家插座 开启 | 按键双击 | 右 Ctrl（VK 163） |
